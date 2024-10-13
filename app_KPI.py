@@ -258,3 +258,7 @@ with tab3:
         for edu in educations:
             col_name = f'education_{edu}'
             if col_name not
+
+        if col_name not in user_input_encoded.columns:
+    user_input_encoded[col_name] = 0
+
