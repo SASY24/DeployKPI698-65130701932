@@ -234,31 +234,4 @@ with tab3:
 
         # Check if 'employee_id' exists and drop it
         if 'employee_id' in csv_df_org.columns:
-            csv_df = csv_df_org.drop('employee_id', axis=1)
-        else:
-            csv_df = csv_df_org.copy()
-
-        # ---------------------------
-        # One-Hot Encoding for Categorical Variables
-        # ---------------------------
-
-        csv_df_encoded = pd.get_dummies(csv_df, columns=categorical_features)
-
-        # Create dummy variable columns for all categories
-        for dep in departments:
-            col_name = f'department_{dep}'
-            if col_name not in csv_df_encoded.columns:
-                csv_df_encoded[col_name] = 0
-
-        for reg in regions:
-            col_name = f'region_{reg}'
-            if col_name not in csv_df_encoded.columns:
-                csv_df_encoded[col_name] = 0
-
-        for edu in educations:
-            col_name = f'education_{edu}'
-            if col_name not
-
-        if col_name not in user_input_encoded.columns:
-    user_input_encoded[col_name] = 0
-
+            csv_df = csv_df_org.drop
