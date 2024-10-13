@@ -1,19 +1,38 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pickle
+import os
 
 # Load model and encoders
-with open('model_kpi.65130701932', 'rb') as file:
-    model, department_encoder, region_encoder, education_encoder, gender_encoder, recruitment_channel_encoder = pickle.load(file)
+@st.cache_resource
+def load_model():
+    model_path = 'model_kpi.65130701932'
+    if os.path.exists(model_path):
+        with open(model_path, 'rb') as file:
+            return pickle.load(file)
+    else:
+        st.error(f"Model file '{model_path}' not found. Please ensure it's in the correct location.")
+        return None
+
+model_data = load_model()
+if model_data:
+    model, department_encoder, region_encoder, education_encoder, gender_encoder, recruitment_channel_encoder = model_data
 
 # Load your DataFrame
-# Replace 'your_data.csv' with the actual file name or URL
-df = pd.read_csv('Uncleaned_employees_final_dataset.csv')
-df = df.drop('employee_id', axis=1)
+@st.cache_data
+def load_data():
+    file_path = 'Uncleaned_employees_final_dataset.csv'
+    if os.path.exists(file_path):
+        df = pd.read_csv(file_path)
+        return df.drop('employee_id', axis=1)
+    else:
+        st.error(f"Data file '{file_path}' not found. Please ensure it's in the correct location.")
+        return None
+
+df = load_data()
 
 # Streamlit App
 st.title('Employee KPIs App')
@@ -31,7 +50,7 @@ if selected_tab != st.session_state.tab_selected:
     st.session_state.tab_selected = tabs.index(selected_tab)
 
 # Tab 1: Predict KPIs
-if st.session_state.tab_selected == 0:
+if st.session_state.tab_selected == 0 and model_data and df is not None:
     st.header('Predict KPIs')
 
     # User Input Form
@@ -77,7 +96,7 @@ if st.session_state.tab_selected == 0:
     st.write('KPIs_met_more_than_80:', prediction[0])
 
 # Tab 2: Visualize Data
-elif st.session_state.tab_selected == 1:
+elif st.session_state.tab_selected == 1 and df is not None:
     st.header('Visualize Data')
 
     # Select condition feature
@@ -106,54 +125,57 @@ elif st.session_state.tab_selected == 1:
         st.pyplot(fig)
 
 # Tab 3: Predict from CSV
-elif st.session_state.tab_selected == 2:
+elif st.session_state.tab_selected == 2 and model_data:
     st.header('Predict from CSV')
 
     # Upload CSV file
     uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
-    # uploaded_file
     
     if uploaded_file is not None:
         # Read CSV file
         csv_df_org = pd.read_csv(uploaded_file)
         csv_df_org = csv_df_org.dropna()
-        # csv_df_org.columns
         
         csv_df = csv_df_org.copy()
-        csv_df = csv_df.drop('employee_id',axis=1)
+        if 'employee_id' in csv_df.columns:
+            csv_df = csv_df.drop('employee_id', axis=1)
         
+        # Check if all required columns are present
+        required_columns = ['department', 'region', 'education', 'gender', 'recruitment_channel', 'no_of_trainings', 'age', 'previous_year_rating', 'length_of_service', 'awards_won', 'avg_training_score']
+        missing_columns = set(required_columns) - set(csv_df.columns)
         
-        
-         # Categorical Data Encoding
-        csv_df['department'] = department_encoder.transform(csv_df['department'])
-        csv_df['region'] = region_encoder.transform(csv_df['region'])
-        csv_df['education'] = education_encoder.transform(csv_df['education'])
-        csv_df['gender'] = gender_encoder.transform(csv_df['gender'])
-        csv_df['recruitment_channel'] = recruitment_channel_encoder.transform(csv_df['recruitment_channel'])
+        if missing_columns:
+            st.error(f"The following required columns are missing from the CSV: {', '.join(missing_columns)}")
+        else:
+            # Categorical Data Encoding
+            csv_df['department'] = department_encoder.transform(csv_df['department'])
+            csv_df['region'] = region_encoder.transform(csv_df['region'])
+            csv_df['education'] = education_encoder.transform(csv_df['education'])
+            csv_df['gender'] = gender_encoder.transform(csv_df['gender'])
+            csv_df['recruitment_channel'] = recruitment_channel_encoder.transform(csv_df['recruitment_channel'])
 
+            # Predicting
+            predictions = model.predict(csv_df)
 
-        # Predicting
-        predictions = model.predict(csv_df)
+            # Add predictions to the DataFrame
+            csv_df_org['KPIs_met_more_than_80'] = predictions
 
-        # Add predictions to the DataFrame
-        csv_df_org['KPIs_met_more_than_80'] = predictions
+            # Display the DataFrame with predictions
+            st.subheader('Predicted Results:')
+            st.write(csv_df_org)
 
-        # Display the DataFrame with predictions
-        st.subheader('Predicted Results:')
-        st.write(csv_df_org)
+            # Visualize predictions based on a selected feature
+            st.subheader('Visualize Predictions')
 
-        # Visualize predictions based on a selected feature
-        st.subheader('Visualize Predictions')
+            # Select feature for visualization
+            feature_for_visualization = st.selectbox('Select Feature for Visualization:', csv_df_org.columns)
 
-        # Select feature for visualization
-        feature_for_visualization = st.selectbox('Select Feature for Visualization:', csv_df_org.columns)
-
-        # Plot the number of employees based on KPIs for the selected feature
-        fig, ax = plt.subplots(figsize=(14, 8))
-        sns.countplot(x=feature_for_visualization, hue='KPIs_met_more_than_80', data=csv_df_org, palette='viridis')
-        plt.title(f'Number of Employees based on KPIs - {feature_for_visualization}')
-        plt.xlabel(feature_for_visualization)
-        plt.ylabel('Number of Employees')
-        st.pyplot(fig)
-
-        
+            # Plot the number of employees based on KPIs for the selected feature
+            fig, ax = plt.subplots(figsize=(14, 8))
+            sns.countplot(x=feature_for_visualization, hue='KPIs_met_more_than_80', data=csv_df_org, palette='viridis')
+            plt.title(f'Number of Employees based on KPIs - {feature_for_visualization}')
+            plt.xlabel(feature_for_visualization)
+            plt.ylabel('Number of Employees')
+            st.pyplot(fig)
+else:
+    st.error("Please ensure all required files are present and the model is loaded correctly.")
