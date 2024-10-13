@@ -91,20 +91,86 @@ with tab1:
         'avg_training_score': [avg_training_score]
     })
 
-    # Categorical Data Encoding
-    try:
-        user_input['department'] = department_encoder.transform(user_input['department'])
-        user_input['region'] = region_encoder.transform(user_input['region'])
-        user_input['education'] = education_encoder.transform(user_input['education'])
-        user_input['gender'] = gender_encoder.transform(user_input['gender'])
-        user_input['recruitment_channel'] = recruitment_channel_encoder.transform(user_input['recruitment_channel'])
-    except Exception as e:
-        st.error(f"Error encoding categorical variables: {e}")
-        st.stop()
+    # ---------------------------
+    # One-Hot Encoding for Categorical Variables
+    # ---------------------------
 
-    # Predicting
+    categorical_features = ['department', 'region', 'education', 'gender', 'recruitment_channel']
+    user_input_encoded = pd.get_dummies(user_input, columns=categorical_features)
+
+    # ---------------------------
+    # Ensure All Expected Features Are Present
+    # ---------------------------
+
+    # Define all possible categories for each categorical feature
+    departments = department_encoder.classes_
+    regions = region_encoder.classes_
+    educations = education_encoder.classes_
+    genders = gender_encoder.classes_
+    recruitment_channels = recruitment_channel_encoder.classes_
+
+    # Create dummy variable columns for all categories
+    for dep in departments:
+        col_name = f'department_{dep}'
+        if col_name not in user_input_encoded.columns:
+            user_input_encoded[col_name] = 0
+
+    for reg in regions:
+        col_name = f'region_{reg}'
+        if col_name not in user_input_encoded.columns:
+            user_input_encoded[col_name] = 0
+
+    for edu in educations:
+        col_name = f'education_{edu}'
+        if col_name not in user_input_encoded.columns:
+            user_input_encoded[col_name] = 0
+
+    for gen in genders:
+        col_name = f'gender_{gen}'
+        if col_name not in user_input_encoded.columns:
+            user_input_encoded[col_name] = 0
+
+    for rc in recruitment_channels:
+        col_name = f'recruitment_channel_{rc}'
+        if col_name not in user_input_encoded.columns:
+            user_input_encoded[col_name] = 0
+
+    # ---------------------------
+    # Reorder Columns to Match Training Data
+    # ---------------------------
+
+    expected_columns = [
+        'no_of_trainings',
+        'age',
+        'previous_year_rating',
+        'length_of_service',
+        'awards_won',
+        'avg_training_score',
+    ]
+
+    # Add all dummy variables in the expected order
+    expected_columns += [f'department_{dep}' for dep in departments]
+    expected_columns += [f'region_{reg}' for reg in regions]
+    expected_columns += [f'education_{edu}' for edu in educations]
+    expected_columns += [f'gender_{gen}' for gen in genders]
+    expected_columns += [f'recruitment_channel_{rc}' for rc in recruitment_channels]
+
+    # Reorder the DataFrame columns and ensure all expected columns are present
+    user_input_encoded = user_input_encoded.reindex(columns=expected_columns, fill_value=0)
+
+    # ---------------------------
+    # Debugging: Check Feature Alignment
+    # ---------------------------
+
+    st.write("Input Features:", user_input_encoded.columns.tolist())
+    st.write("Number of Input Features:", user_input_encoded.shape[1])
+
+    # ---------------------------
+    # Prediction
+    # ---------------------------
+
     try:
-        prediction = model.predict(user_input)
+        prediction = model.predict(user_input_encoded)
     except Exception as e:
         st.error(f"Error during prediction: {e}")
         st.stop()
@@ -172,20 +238,47 @@ with tab3:
         else:
             csv_df = csv_df_org.copy()
 
-        # Categorical Data Encoding
-        try:
-            csv_df['department'] = department_encoder.transform(csv_df['department'])
-            csv_df['region'] = region_encoder.transform(csv_df['region'])
-            csv_df['education'] = education_encoder.transform(csv_df['education'])
-            csv_df['gender'] = gender_encoder.transform(csv_df['gender'])
-            csv_df['recruitment_channel'] = recruitment_channel_encoder.transform(csv_df['recruitment_channel'])
-        except Exception as e:
-            st.error(f"Error encoding categorical variables: {e}")
-            st.stop()
+        # ---------------------------
+        # One-Hot Encoding for Categorical Variables
+        # ---------------------------
 
-        # Predicting
+        csv_df_encoded = pd.get_dummies(csv_df, columns=categorical_features)
+
+        # Create dummy variable columns for all categories
+        for dep in departments:
+            col_name = f'department_{dep}'
+            if col_name not in csv_df_encoded.columns:
+                csv_df_encoded[col_name] = 0
+
+        for reg in regions:
+            col_name = f'region_{reg}'
+            if col_name not in csv_df_encoded.columns:
+                csv_df_encoded[col_name] = 0
+
+        for edu in educations:
+            col_name = f'education_{edu}'
+            if col_name not in csv_df_encoded.columns:
+                csv_df_encoded[col_name] = 0
+
+        for gen in genders:
+            col_name = f'gender_{gen}'
+            if col_name not in csv_df_encoded.columns:
+                csv_df_encoded[col_name] = 0
+
+        for rc in recruitment_channels:
+            col_name = f'recruitment_channel_{rc}'
+            if col_name not in csv_df_encoded.columns:
+                csv_df_encoded[col_name] = 0
+
+        # Reorder columns to match training data
+        csv_df_encoded = csv_df_encoded.reindex(columns=expected_columns, fill_value=0)
+
+        # ---------------------------
+        # Prediction
+        # ---------------------------
+
         try:
-            predictions = model.predict(csv_df)
+            predictions = model.predict(csv_df_encoded)
         except Exception as e:
             st.error(f"Error during prediction: {e}")
             st.stop()
