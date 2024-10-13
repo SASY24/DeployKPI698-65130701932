@@ -64,6 +64,14 @@ else:
     model, department_encoder, region_encoder, education_encoder, gender_encoder, recruitment_channel_encoder = model_data
     encoders = (department_encoder, region_encoder, education_encoder, gender_encoder, recruitment_channel_encoder)
 
+    # Debug information about the model
+    st.write("Model Information:")
+    st.write(f"Model type: {type(model)}")
+    if hasattr(model, 'feature_names_in_'):
+        st.write(f"Model expected features: {model.feature_names_in_}")
+    else:
+        st.write("Model does not have feature_names_in_ attribute")
+
     # Create tabs for prediction and visualization
     tab1, tab2, tab3 = st.tabs(["Predict KPIs", "Visualize Data", "Predict from CSV"])
 
@@ -105,7 +113,15 @@ else:
 
             # Predicting
             try:
+                st.write("Debug information before prediction:")
+                st.write(f"Input data shape: {user_input_prepared.shape}")
+                st.write(f"Input data columns: {user_input_prepared.columns}")
+                st.write(f"Input data types: {user_input_prepared.dtypes}")
+                st.write("Input data preview:")
+                st.write(user_input_prepared)
+
                 prediction = model.predict(user_input_prepared)
+                
                 # Display Result
                 st.subheader('Prediction Result:')
                 st.write('KPIs_met_more_than_80:', prediction[0])
@@ -114,6 +130,9 @@ else:
                 st.write("Debug information:")
                 st.write(f"Input data shape: {user_input_prepared.shape}")
                 st.write(f"Input data columns: {user_input_prepared.columns}")
+                st.write(f"Input data types: {user_input_prepared.dtypes}")
+                st.write("Input data preview:")
+                st.write(user_input_prepared)
 
     # Tab 2: Visualize Data
     with tab2:
@@ -164,6 +183,13 @@ else:
             csv_df_prepared = prepare_input_data(csv_df, encoders)
 
             try:
+                st.write("Debug information before prediction:")
+                st.write(f"Input data shape: {csv_df_prepared.shape}")
+                st.write(f"Input data columns: {csv_df_prepared.columns}")
+                st.write(f"Input data types: {csv_df_prepared.dtypes}")
+                st.write("Input data preview:")
+                st.write(csv_df_prepared.head())
+
                 # Predicting
                 predictions = model.predict(csv_df_prepared)
 
@@ -192,3 +218,6 @@ else:
                 st.write("Debug information:")
                 st.write(f"Input data shape: {csv_df_prepared.shape}")
                 st.write(f"Input data columns: {csv_df_prepared.columns}")
+                st.write(f"Input data types: {csv_df_prepared.dtypes}")
+                st.write("Input data preview:")
+                st.write(csv_df_prepared.head())
